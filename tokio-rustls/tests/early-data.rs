@@ -170,6 +170,15 @@ async fn test_0rtt() -> io::Result<()> {
     let config = Arc::new(config);
     let addr = SocketAddr::from(([127, 0, 0, 1], 12354));
 
+    let stdin = handle.0.stdin.take().unwrap();
+    thread::spawn(move || {
+        let mut stdin = stdin;
+        loop {
+            thread::sleep(std::time::Duration::from_secs(5));
+            std::io::Write::write_all(&mut stdin, b"\n").unwrap();
+        }
+    });
+
     let io = send(config.clone(), addr, b"hello").await?;
     assert!(!io.get_ref().1.is_early_data_accepted());
 
