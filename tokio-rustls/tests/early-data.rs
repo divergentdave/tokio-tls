@@ -1,7 +1,7 @@
 #![cfg(feature = "early-data")]
 
 use futures_util::{future, future::Future, ready};
-use rustls::RootCertStore;
+use rustls::{KeyLogFile, RootCertStore};
 use std::convert::TryFrom;
 use std::io::{self, BufRead, BufReader, Cursor};
 use std::net::SocketAddr;
@@ -110,6 +110,7 @@ async fn test_0rtt() -> io::Result<()> {
         .args(["-cert", "./tests/end.cert"])
         .args(["-key", "./tests/end.rsa"])
         .args(["-port", "12354"])
+        .args(["-keylogfile", "./server_keylog"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -137,6 +138,8 @@ async fn test_0rtt() -> io::Result<()> {
         .unwrap()
         .with_root_certificates(root_store)
         .with_no_client_auth();
+    std::env::set_var("SSLKEYLOGFILE", "./client_keylog");
+    config.key_log = Arc::new(KeyLogFile::new());
     config.enable_early_data = true;
     let config = Arc::new(config);
     let addr = SocketAddr::from(([127, 0, 0, 1], 12354));
