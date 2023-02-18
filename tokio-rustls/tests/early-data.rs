@@ -9,10 +9,12 @@ use std::pin::Pin;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 use std::task::{Context, Poll};
+use std::thread;
 use std::time::Duration;
 use tokio::io::{split, AsyncRead, AsyncWriteExt, ReadBuf};
 use tokio::net::TcpStream;
 use tokio::sync::oneshot;
+use tokio::task::spawn_blocking;
 use tokio::time::sleep;
 use tokio_rustls::{
     client::TlsStream,
@@ -116,6 +118,17 @@ async fn test_0rtt() -> io::Result<()> {
         .spawn()
         .map(DropKill)?;
 
+    // read from stdout on another thread to avoid blocking on a full buffer
+    let stdout = handle.0.stdout.take().unwrap();
+    let join_handle = thread::spawn(move || {
+        let mut lines = BufReader::new(stdout).lines();
+
+        let has_msg1 = lines.by_ref().any(|line| line.unwrap().contains("hello"));
+        let has_msg2 = lines.by_ref().any(|line| line.unwrap().contains("world!"));
+
+        assert!(has_msg1 && has_msg2);
+    });
+
     // wait openssl server
     sleep(Duration::from_secs(1)).await;
 
@@ -150,13 +163,9 @@ async fn test_0rtt() -> io::Result<()> {
     let io = send(config, addr, b"world!").await?;
     assert!(io.get_ref().1.is_early_data_accepted());
 
-    let stdout = handle.0.stdout.as_mut().unwrap();
-    let mut lines = BufReader::new(stdout).lines();
-
-    let has_msg1 = lines.by_ref().any(|line| line.unwrap().contains("hello"));
-    let has_msg2 = lines.by_ref().any(|line| line.unwrap().contains("world!"));
-
-    assert!(has_msg1 && has_msg2);
+    spawn_blocking(move || join_handle.join().unwrap())
+        .await
+        .unwrap();
 
     Ok(())
 }
