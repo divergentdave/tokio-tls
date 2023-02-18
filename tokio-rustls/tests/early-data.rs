@@ -113,6 +113,7 @@ async fn test_0rtt() -> io::Result<()> {
         .args(["-key", "./tests/end.rsa"])
         .args(["-port", "12354"])
         .args(["-keylogfile", "./server_keylog"])
+        .arg("-debug")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
