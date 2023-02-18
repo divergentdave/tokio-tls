@@ -128,16 +128,8 @@ async fn test_0rtt() -> io::Result<()> {
             line
         });
 
-        for line in &mut lines {
-            if line.contains("hello") {
-                break;
-            }
-        }
-        for line in &mut lines {
-            if line.contains("world!") {
-                break;
-            }
-        }
+        assert!(lines.any(|line| line.contains("hello")));
+        assert!(lines.any(|line| line.contains("world!")));
 
         thread::spawn(move || lines.for_each(|_| {}));
     });
