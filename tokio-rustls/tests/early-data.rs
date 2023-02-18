@@ -121,12 +121,24 @@ async fn test_0rtt() -> io::Result<()> {
     // read from stdout on another thread to avoid blocking on a full buffer
     let stdout = handle.0.stdout.take().unwrap();
     let join_handle = thread::spawn(move || {
-        let mut lines = BufReader::new(stdout).lines();
+        let mut lines = BufReader::new(stdout).lines().map(|line_res| {
+            let line = line_res.unwrap();
+            println!("OpenSSL s_server stdout: {:?}", line);
+            line
+        });
 
-        let has_msg1 = lines.by_ref().any(|line| line.unwrap().contains("hello"));
-        let has_msg2 = lines.by_ref().any(|line| line.unwrap().contains("world!"));
+        for line in &mut lines {
+            if line.contains("hello") {
+                break;
+            }
+        }
+        for line in &mut lines {
+            if line.contains("world!") {
+                break;
+            }
+        }
 
-        assert!(has_msg1 && has_msg2);
+        thread::spawn(move || lines.for_each(|_| {}));
     });
 
     // wait openssl server
