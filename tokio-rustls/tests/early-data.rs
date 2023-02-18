@@ -175,6 +175,7 @@ async fn test_0rtt() -> io::Result<()> {
         let mut stdin = stdin;
         loop {
             thread::sleep(std::time::Duration::from_secs(5));
+            println!("Writing to OpenSSL s_server stdin");
             std::io::Write::write_all(&mut stdin, b"\n").unwrap();
         }
     });
